@@ -1,30 +1,70 @@
-import { Pressable, Text, View, StyleSheet, TextInput } from "react-native";
+import { useState } from "react";
+import { Pressable, Image, Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ScrollView} from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {AntDesign} from '@expo/vector-icons';
-import {router}  from 'expo-router'
+import {Link , router}  from 'expo-router'
+import {selectedGroupAtom} from '../../../atoms';
+import {useAtom} from 'jotai';
+
 
 export default function CreateScreen() {
+  const [title, setTitle] = useState<string>("");
+  const [bodyText, setBodyText] = useState<string>("");
+  const [group, setGroup] = useAtom(selectedGroupAtom);
+
+  const goBack = () => {
+    setTitle("");
+    setBodyText("");
+    setGroup(null);
+    router.back();
+  };
+
   return (
     <SafeAreaView style={{ backgroundColor: 'white', flex: 1, paddingHorizontal: 10}}>
       {/* Header */}
       <View style={{ flexDirection: 'row' , alignItems: 'center'}}>
-       <AntDesign name="close" size={30} color="black" onPress={() => router.back()}/>
+       <AntDesign name="close" size={30} color="black" onPress={() => goBack()}/>
       <Pressable onPress={() => console.error('Pressed')} style={{marginLeft: 'auto'}}>
         <Text style={styles.postText}>Post</Text>
       </Pressable>
       </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined }  style={{flex: 1}}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{paddingVertical: 15}}>
       {/* Community Selector */}
-      <View style={ styles.communityContainer}>
-        <Text style={styles.rStyles}>r/</Text>
-        <Text style={{fontWeight: '600'}}>Select a Community</Text>
-      </View>
+      <Link href={"groupSelector"} asChild>
+       <Pressable  style={styles.communityContainer}>
+          {group ? (
+            <>
+            <Image source={{uri: group.image}} style={{width:20 , height:20, borderRadius: 10}}/>
+            <Text style={{fontWeight: '600'}} >{group.name}</Text>
+            </>
+          ): (
+            <>
+            <Text style={styles.rStyles}>r/</Text>
+            <Text style={{fontWeight: '600'}}>Select a Community</Text>
+            </>
+          )}
+        
+        </Pressable>
+      </Link>
        {/* Inputs */}
        <TextInput
         placeholder="Title"
         style={{fontSize: 20, fontWeight: 'bold', paddingVertical: 20}}
+        value={title}
+        onChangeText={(text) => setTitle(text)}
+        multiline
+        scrollEnabled={false}
        />
        <TextInput
-        placeholder="body text (optional)" />
+        placeholder="body text (optional)"
+        value={bodyText}
+        onChangeText={(text) => setBodyText(text)} 
+        multiline
+        scrollEnabled={false}
+        />
+        </ScrollView>
+        </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
