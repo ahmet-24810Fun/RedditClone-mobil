@@ -2,8 +2,14 @@ import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import posts from "../../assets/data/posts.json";
 import {formatDistanceToNowStrict} from "date-fns";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import {Post} from "../types";
 import { Link } from "expo-router";
+import { Tables } from "../types/database.types";
+
+type Post = Tables<"posts"> & {
+  group: Tables<"groups">;
+  user: Tables<"users">;
+}
+
 
 type PostListItemProps = {
     post: Post;

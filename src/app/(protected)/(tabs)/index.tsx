@@ -20,7 +20,7 @@ type Post = Tables<"posts"> & {
 
 export default function HomeScreen() {
 
-  const { data: posts, isLoading, error} = useQuery({
+  const { data: posts, isLoading, error, refetch, isRefetching} = useQuery({
     queryKey: ["posts"],
     queryFn: () => fetchPosts()
   })
@@ -42,7 +42,10 @@ if (error) {
     <View>
     <FlatList 
      data={posts}
-      renderItem={({item}) => <PostListItem post={item} />} />
+      renderItem={({item}) => <PostListItem post={item} />} 
+      onRefresh={refetch}
+      refreshing={isRefetching}
+      />
 
     </View>
   
