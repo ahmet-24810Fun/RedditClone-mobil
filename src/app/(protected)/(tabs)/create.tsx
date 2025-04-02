@@ -1,44 +1,47 @@
 import { useState } from "react";
 import { Pressable, Image, Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert} from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {AntDesign} from '@expo/vector-icons';
+import {AntDesign, Feather} from '@expo/vector-icons';
 import {Link , router}  from 'expo-router'
 import {selectedGroupAtom} from '../../../atoms';
 import {useAtom} from 'jotai';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
-import { supabase } from "../../../lib/supabase";
-import { TablesInsert } from "../../../types/database.types";
+import { useSupabase } from "../../../lib/supabase";
+import { Database, TablesInsert } from "../../../types/database.types";
+import { SupabaseClient } from "@supabase/supabase-js";
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImage } from "../../../utils/supabaseImages";
+import { insertPost } from "../../../services/postService";
 
-type InsertPost =  TablesInsert<'posts'>;
 
-const insertPost = async (post : InsertPost) =>{
-  // use supabase to insert a new post
-const {data, error} =  await supabase.from("posts").insert( post).select().single();
 
-if (error) {
-  throw error;
-} else {
-  return data;
-}
-}
+
+
 
 export default function CreateScreen() {
   const [title, setTitle] = useState<string>("");
   const [bodyText, setBodyText] = useState<string>("");
   const [group, setGroup] = useAtom(selectedGroupAtom);
+  const [image, setImage] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
+  const supabase = useSupabase();
+
  const {mutate , isPending } = useMutation({
-    mutationFn: () => {
+    mutationFn: (image : string | undefined) => {
       if(!group) {
         throw new Error("Group is not selected");
+      }
+      if(!title) {
+        throw new Error("Title is required");
       }
       return insertPost({
         title, 
         description: bodyText, 
         group_id: group.id,
-        user_id: '59635e17-c2c9-4f6d-ab2c-ccfbf4f26ca7'});
+        image,
+        }, supabase);
   
     },
       onSuccess:  (data) => {
@@ -55,10 +58,11 @@ export default function CreateScreen() {
       }
   });
    
+  const onPostClick = async () => {
+    let imagePath = image ? await uploadImage(image, supabase) : undefined
   
-  
-
-  
+    mutate(imagePath);
+  }
 
   const goBack = () => {
     setTitle("");
@@ -67,12 +71,32 @@ export default function CreateScreen() {
     router.back();
   };
 
+
+  
+
+
+  const pickImage = async () => {
+    // No permissions request is necessary for launching the image library
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    console.log(result);
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
   return (
     <SafeAreaView style={{ backgroundColor: 'white', flex: 1, paddingHorizontal: 10}}>
       {/* Header */}
       <View style={{ flexDirection: 'row' , alignItems: 'center'}}>
        <AntDesign name="close" size={30} color="black" onPress={() => goBack()}/>
-      <Pressable onPress={() => mutate()} style={{marginLeft: 'auto'}} disabled={isPending}>
+      <Pressable onPress={() => onPostClick()} style={{marginLeft: 'auto'}} disabled={isPending}>
         <Text style={styles.postText}>{isPending ? "Posting.." : "Post"}</Text>
       </Pressable>
       </View>
@@ -104,6 +128,30 @@ export default function CreateScreen() {
         multiline
         scrollEnabled={false}
        />
+
+{image && (
+            <View style={{ paddingBottom: 20 }}>
+              <AntDesign
+                name="close"
+                size={25}
+                color="white"
+                onPress={() => setImage(null)}
+                style={{
+                  position: "absolute",
+                  zIndex: 1,
+                  right: 10,
+                  top: 10,
+                  padding: 5,
+                  backgroundColor: "#00000090",
+                  borderRadius: 20,
+                }}
+              />
+              <Image
+                source={{ uri: image }}
+                style={{ width: "100%", aspectRatio: 1 }}
+              />
+            </View>
+          )}
        <TextInput
         placeholder="body text (optional)"
         value={bodyText}
@@ -112,6 +160,13 @@ export default function CreateScreen() {
         scrollEnabled={false}
         />
         </ScrollView>
+         {/* FOOTER */}
+         <View style={{ flexDirection: "row", gap: 20, padding: 10 }}>
+          <Feather name="link" size={20} color="black" />
+          <Feather name="image" size={20} color="black" onPress={pickImage} />
+          <Feather name="youtube" size={20} color="black" />
+          <Feather name="list" size={20} color="black" />
+        </View>
         </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -1,56 +1,56 @@
-import {useState, useEffect} from "react";
-import {Text, View, FlatList, ActivityIndicator } from "react-native";
+import { FlatList, ActivityIndicator, Text, Button } from "react-native";
 import PostListItem from "../../../components/PostListItem";
-//import posts from "../../../../assets/data/posts.json";
-
-import {supabase} from "../../../lib/supabase";
-//import { Post } from "../../../types";
-import { Tables } from "../../../types/database.types";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchPosts } from "../../../services/postService";
-
-
-type Post = Tables<"posts"> & {
-  group: Tables<"groups">;
-  user: Tables<"users">;
-}
-
-
-
+import { useSupabase } from "../../../lib/supabase";
 
 export default function HomeScreen() {
+  const supabase = useSupabase();
 
-  const { data: posts, isLoading, error, refetch, isRefetching} = useQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
     queryKey: ["posts"],
-    queryFn: () => fetchPosts()
-  })
-  
- 
+    queryFn: ({ pageParam }) => fetchPosts(pageParam, supabase),
+    initialPageParam: { limit: 2, offset: 0 },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length === 0) {
+        return undefined;
+      }
+      return {
+        limit: 2,
+        offset: allPages.flat().length,
+      };
+    },
+  });
 
+  if (isLoading) {
+    return <ActivityIndicator />;
+  }
 
+  if (error) {
+    console.log(error);
+    return <Text>Error fetching posts</Text>;
+  }
 
- if (isLoading) {
-  return <ActivityIndicator />;
-}
-
-if (error) {
-  console.log(error);
-  return <Text>Error fetching posts</Text>;
-}
+  const posts = data?.pages.flat() || [];
 
   return (
-    <View>
-    <FlatList 
-     data={posts}
-      renderItem={({item}) => <PostListItem post={item} />} 
+    <FlatList
+      data={posts}
+      renderItem={({ item }) => <PostListItem post={item} />}
       onRefresh={refetch}
       refreshing={isRefetching}
-      />
-
-    </View>
-  
+      onEndReachedThreshold={2}
+      onEndReached={() => !isFetchingNextPage && hasNextPage && fetchNextPage()}
+      ListFooterComponent={isFetchingNextPage ? <ActivityIndicator /> : null}
+    />
   );
 }
-
-
-
